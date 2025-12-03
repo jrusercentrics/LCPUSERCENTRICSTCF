@@ -31,7 +31,7 @@
 (function() {
   console.log("[UC-LCP-FIX] Workaround script loaded");
 
-  function tryApplyFix() {
+  function tryApply() {
     const host = document.querySelector("aside#usercentrics-cmp-ui");
     if (!host || !host.shadowRoot) {
       console.log("[UC-LCP-FIX] shadowRoot not ready yet");
@@ -48,36 +48,23 @@
 
     console.log("[UC-LCP-FIX] Element found — applying workaround");
 
-    target.textContent = "This is the modified text used for LCP testing.";
+    if (target.tagName.toLowerCase() !== "p") {
+      const p = document.createElement("p");
+      p.className = target.className;
+      p.innerHTML = target.innerHTML;
+      target.replaceWith(p);
+    }
 
-    // Observe future updates from Usercentrics
-    new MutationObserver(() => {
-      const t = shadow.querySelector("#uc-privacy-description .privacy-text-detailed");
-      if (t && t.textContent !== "This is the modified text used for LCP testing.") {
-        console.log("[UC-LCP-FIX] Detected Usercentrics update → Reapplying text");
-        t.textContent = "This is the modified text used for LCP testing.";
-      }
-    }).observe(shadow, { childList: true, subtree: true });
-
+    console.log("[UC-LCP-FIX] Workaround fully activated");
   }
 
-  // Try frequently until UC finishes loading
-  const interval = setInterval(() => {
-    tryApplyFix();
-  }, 200);
+  const observer = new MutationObserver(tryApply);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  // Stop trying once it works
-  const stopWhenReady = setInterval(() => {
-    const host = document.querySelector("aside#usercentrics-cmp-ui");
-    if (host && host.shadowRoot && host.shadowRoot.querySelector("#uc-privacy-description .privacy-text-detailed")) {
-      clearInterval(interval);
-      clearInterval(stopWhenReady);
-      console.log("[UC-LCP-FIX] Workaround fully activated");
-    }
-  }, 500);
-
+  tryApply();
 })();
 </script>
+
 
 
 
