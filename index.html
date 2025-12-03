@@ -28,42 +28,66 @@
 
 <!-- Workaround: split privacy text into paragraphs -->
 <script>
-(function() {
-  console.log("[UC-LCP-FIX] Workaround script loaded");
+(function UC_LCP_Fix() {
+  const log = (...a) => console.log("[UC-LCP-FIX]", ...a);
 
-  function tryApply() {
-    const host = document.querySelector("aside#usercentrics-cmp-ui");
-    if (!host || !host.shadowRoot) {
-      console.log("[UC-LCP-FIX] shadowRoot not ready yet");
-      return;
+  function findRealPrivacyNode() {
+    // encontrar todos os elementos com shadowRoot
+    const hosts = [...document.querySelectorAll("*")].filter(el => el.shadowRoot);
+    for (const host of hosts) {
+      const real = host.shadowRoot.querySelector(".privacy-text-detailed");
+      if (real) {
+        log("FOUND REAL PRIVACY NODE in:", host.tagName);
+        return real;
+      }
     }
-
-    const shadow = host.shadowRoot;
-    const target = shadow.querySelector("#uc-privacy-description .privacy-text-detailed");
-
-    if (!target) {
-      console.log("[UC-LCP-FIX] privacy-text-detailed not found yet");
-      return;
-    }
-
-    console.log("[UC-LCP-FIX] Element found — applying workaround");
-
-    if (target.tagName.toLowerCase() !== "p") {
-      const p = document.createElement("p");
-      p.className = target.className;
-      p.innerHTML = target.innerHTML;
-      target.replaceWith(p);
-    }
-
-    console.log("[UC-LCP-FIX] Workaround fully activated");
+    return null;
   }
 
-  const observer = new MutationObserver(tryApply);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  function splitParagraphs(node) {
+    if (!node) return log("privacy-text-detailed not found");
 
-  tryApply();
+    const original = node.innerText.trim();
+    if (!original) return log("Text empty or not ready");
+
+    // já dividido?
+    if (node.innerHTML.includes("<p>")) {
+      return log("Paragraphs already applied — skipping");
+    }
+
+    log("Splitting text into paragraphs...");
+
+    // dividir por ponto final + espaço
+    const parts = original.split(/\.\s+/).filter(Boolean);
+
+    node.innerHTML = parts
+      .map(sentence => `<p>${sentence.trim()}.</p>`)
+      .join("");
+
+    log("Paragraphs applied!");
+  }
+
+  function tryApply() {
+    const node = findRealPrivacyNode();
+    if (node) splitParagraphs(node);
+  }
+
+  // tentar várias vezes até o CMP carregar
+  const interval = setInterval(() => {
+    tryApply();
+  }, 250);
+
+  // parar após 10s
+  setTimeout(() => clearInterval(interval), 10000);
+
+  // observar alterações (CMP re-render)
+  new MutationObserver(() => tryApply())
+    .observe(document.documentElement, { childList: true, subtree: true });
+
+  log("Workaround script loaded");
 })();
 </script>
+
 
 
 
