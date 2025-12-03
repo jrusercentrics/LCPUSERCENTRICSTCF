@@ -1,15 +1,16 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Usercentrics Banner LCP Test</title>
+<title>Usercentrics LCP Workaround Test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
   body { margin:0; font-family:Arial, sans-serif; background:#111; color:#fff; }
   .hero {
     width:100%;
-    height:60px; /* pequeno para garantir que NÃO é LCP */
+    height:60px; /* small so CMP becomes LCP */
     background:#333;
   }
   .content {
@@ -18,12 +19,40 @@
   }
 </style>
 
-<!-- Usercentrics implementation -->
+<!-- Usercentrics CMP -->
 <script src="https://web.cmp.usercentrics.eu/tcf/stub.js"></script>
 <script id="usercentrics-cmp"
         src="https://web.cmp.usercentrics.eu/ui/loader.js"
         data-settings-id="EB4fNiNKxOwpYl"
-        async>
+        async></script>
+
+<!-- Workaround: split privacy text into paragraphs -->
+<script>
+(function() {
+  function applyWorkaround() {
+    const host = document.querySelector('#usercentrics-cmp-ui');
+    if (!host || !host.shadowRoot) return;
+
+    const root = host.shadowRoot;
+    const privacyText = root.querySelector('#uc-privacy-description');
+    if (!privacyText) return;
+
+    const original = privacyText.textContent.trim();
+    if (!original) return;
+
+    const sentences = original.split(/(?<=[.!?])\s+/);
+
+    privacyText.innerHTML = sentences
+      .map(s => `<p style="margin:0 0 10px 0; line-height:1.3;">${s}</p>`)
+      .join('');
+  }
+
+  // Observe CMP rendering, since CMP loads dynamically
+  const observer = new MutationObserver(() => applyWorkaround());
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  document.addEventListener("DOMContentLoaded", applyWorkaround);
+})();
 </script>
 
 </head>
@@ -32,8 +61,8 @@
 <div class="hero"></div>
 
 <div class="content">
-  <h1>Test page where CMP becomes the LCP</h1>
-  <p>This test ensures the Usercentrics first layer becomes the Largest Contentful Paint.</p>
+  <h1>CMP LCP Workaround Test Page</h1>
+  <p>This page forces the CMP to become the initial LCP and applies the paragraph workaround for testing.</p>
 </div>
 
 </body>
