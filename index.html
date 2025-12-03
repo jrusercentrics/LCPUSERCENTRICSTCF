@@ -34,20 +34,22 @@
     if (!host || !host.shadowRoot) return;
 
     const root = host.shadowRoot;
-    const privacyText = root.querySelector('#uc-privacy-description');
-    if (!privacyText) return;
 
-    const original = privacyText.textContent.trim();
-    if (!original) return;
+    // This is the REAL location of the legal text
+    const span = root.querySelector('#uc-privacy-description .privacy-text-detailed');
+    if (!span) return;
+
+    const original = span.textContent.trim();
+    if (!original || original.length < 50) return; // already processed or too small
 
     const sentences = original.split(/(?<=[.!?])\s+/);
 
-    privacyText.innerHTML = sentences
+    span.innerHTML = sentences
       .map(s => `<p style="margin:0 0 10px 0; line-height:1.3;">${s}</p>`)
       .join('');
   }
 
-  // Observe CMP rendering, since CMP loads dynamically
+  // Watch for CMP rendering
   const observer = new MutationObserver(() => applyWorkaround());
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
