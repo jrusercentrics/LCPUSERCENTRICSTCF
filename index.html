@@ -29,33 +29,69 @@
 <!-- Workaround: split privacy text into paragraphs -->
 <script>
 (function() {
-  function applyWorkaround() {
-    const host = document.querySelector('#usercentrics-cmp-ui');
-    if (!host || !host.shadowRoot) return;
+  function splitPrivacyText(shadow) {
+    // tentar encontrar o span com o texto legal
+    const span = shadow.querySelector('#uc-privacy-description .privacy-text-detailed');
+    if (!span) {
+      console.log('[UC-LCP-FIX] privacy-text-detailed not found in this shadowRoot');
+      return;
+    }
 
-    const root = host.shadowRoot;
-
-    // This is the REAL location of the legal text
-    const span = root.querySelector('#uc-privacy-description .privacy-text-detailed');
-    if (!span) return;
+    // evitar processar duas vezes
+    if (span.innerHTML.includes('<p')) {
+      console.log('[UC-LCP-FIX] Text already split, skipping');
+      return;
+    }
 
     const original = span.textContent.trim();
-    if (!original || original.length < 50) return; // already processed or too small
+    if (!original) {
+      console.log('[UC-LCP-FIX] Empty privacy text, nothing to split');
+      return;
+    }
 
+    console.log('[UC-LCP-FIX] Original text length:', original.length);
+
+    // dividir por frases (. ! ?)
     const sentences = original.split(/(?<=[.!?])\s+/);
+    console.log('[UC-LCP-FIX] Sentences:', sentences.length);
 
     span.innerHTML = sentences
-      .map(s => `<p style="margin:0 0 10px 0; line-height:1.3;">${s}</p>`)
+      .map(s => `<p style="margin:0 0 10px 0; line-height:1.35;">${s}</p>`)
       .join('');
+
+    console.log('[UC-LCP-FIX] Privacy text successfully split into paragraphs');
   }
 
-  // Watch for CMP rendering
-  const observer = new MutationObserver(() => applyWorkaround());
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  function applyOverride() {
+    const host = document.querySelector('.uc-embed');
+    if (!host || !host.shadowRoot) {
+      console.log('[UC-LCP-FIX] .uc-embed host or shadowRoot not ready');
+      return;
+    }
 
-  document.addEventListener("DOMContentLoaded", applyWorkaround);
+    const shadow = host.shadowRoot;
+    splitPrivacyText(shadow);
+
+    // observar alterações internas ao shadowRoot (re-render do CMP)
+    new MutationObserver(() => splitPrivacyText(shadow))
+      .observe(shadow, { childList: true, subtree: true });
+  }
+
+  // correr quando o DOM estiver pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyOverride);
+  } else {
+    applyOverride();
+  }
+
+  // observar o DOM principal para quando .uc-embed aparecer
+  new MutationObserver(() => applyOverride())
+    .observe(document.documentElement, { childList: true, subtree: true });
+
+  console.log('[UC-LCP-FIX] Workaround script loaded (using .uc-embed)');
 })();
 </script>
+
 
 </head>
 <body>
